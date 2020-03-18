@@ -78,7 +78,7 @@ class AccessTokenProvider:
         self.cached_token_path = _xdg_cache_home() / "ugcs" / (account + ".token")
         self.cached_token_path.parent.mkdir(parents=True, exist_ok=True)
         if self.cached_token_path.is_file():
-            with open(self.cached_token_path, "r") as f:
+            with open(str(self.cached_token_path), "r") as f:
                 self.cached_token = json.load(f)
 
     def from_service_account_json(json_obj):
@@ -145,8 +145,17 @@ class AccessTokenProvider:
         if self.cached_token is None:
             self.cached_token = self._request_new_token()
             self.cached_token["expires_at"] = self.cached_token["expires_in"] + int(time.time())
-            with open(self.cached_token_path, "w") as f:
-                json.dump(self.cached_token, f)
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as f:
+                try:
+                    json.dump(self.cached_token, f)
+                    f.flush()
+                    os.fsync(f.fileno())
+                    # Do an atomic rename/replace to ensure cached_token_path always
+                    # contains valid data.
+                    os.replace(f.name, str(self.cached_token_path))
+                except:
+                    os.unlink(f.name)
+                    raise
 
         return self.cached_token
 
