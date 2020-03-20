@@ -258,7 +258,8 @@ def cmd_get(args):
     path = urlparse(args.remote).path[1:]
 
     response = bucket.get(path)
-    print(response)
+    # Output raw binary data
+    sys.stdout.buffer.write(response)
 
 def cmd_get_metadata(args):
     bucket = create_bucket_from_args(args)
